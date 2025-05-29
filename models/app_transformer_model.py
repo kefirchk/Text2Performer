@@ -17,13 +17,13 @@ from models.archs.vqgan_arch import (
 logger = logging.getLogger('base')
 
 
-class AppTransformerModel():
+class AppTransformerModel:
     """Texture-Aware Diffusion based Transformer model.
     """
 
     def __init__(self, opt):
         self.opt = opt
-        self.device = torch.device('cuda')
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.is_train = opt['is_train']
 
         # VQVAE for image
@@ -100,7 +100,7 @@ class AppTransformerModel():
 
     def load_pretrained_image_vae(self):
         # load pretrained vqgan for segmentation mask
-        img_ae_checkpoint = torch.load(self.opt['img_ae_path'])
+        img_ae_checkpoint = torch.load(self.opt['img_ae_path'], map_location=self.device)
         self.img_encoder.load_state_dict(
             img_ae_checkpoint['encoder'], strict=True)
         self.img_decoder.load_state_dict(
@@ -306,7 +306,7 @@ class AppTransformerModel():
     def sample_fn(self, temp=1.0, sample_steps=None):
         self._denoise_fn.eval()
 
-        b, device = self.image.size(0), 'cuda'
+        b, device = self.image.size(0), 'cuda' if torch.cuda.is_available() else 'cpu'
         x_identity_t = torch.ones(
             (b, np.prod(self.shape)), device=device).long() * self.mask_id
         x_pose_t = torch.ones((b, np.prod(self.shape) // 16),
@@ -492,6 +492,6 @@ class AppTransformerModel():
         torch.save(state_dict, save_path)
 
     def load_network(self):
-        checkpoint = torch.load(self.opt['pretrained_sampler'])
+        checkpoint = torch.load(self.opt['pretrained_sampler'], map_location=self.device)
         self._denoise_fn.load_state_dict(checkpoint, strict=True)
         self._denoise_fn.eval()

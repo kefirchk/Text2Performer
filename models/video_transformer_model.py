@@ -25,6 +25,7 @@ class VideoTransformerModel(BaseModel):
 
     def __init__(self, opt):
         super().__init__(opt)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # VQVAE for image
         self.img_encoder = self.model_to_device(
@@ -119,10 +120,7 @@ class VideoTransformerModel(BaseModel):
 
     def load_pretrained_image_vae(self):
         # load pretrained vqgan for segmentation mask
-        img_ae_checkpoint = torch.load(
-            self.opt['img_ae_path'],
-            map_location=lambda storage, loc: storage.cuda(torch.cuda.
-                                                           current_device()))
+        img_ae_checkpoint = torch.load(self.opt['img_ae_path'], map_location=self.device)
         self.get_bare_model(self.img_encoder).load_state_dict(
             img_ae_checkpoint['encoder'], strict=True)
         self.get_bare_model(self.img_decoder).load_state_dict(
@@ -885,6 +883,7 @@ class VideoTransformerModel(BaseModel):
                             img_res=[512, 256]):
 
         for i in range(fix_video_len):
+            print("i=", i)
             if i < 2:
                 frame_path = f'{source_dir}/{i:03d}.png'
                 frame = self.load_raw_image(frame_path, downsample=False)
@@ -907,8 +906,7 @@ class VideoTransformerModel(BaseModel):
                 frame_1 = np.array(frame_1).transpose(2, 0,
                                                       1).astype(np.float32)
                 frame_1 = frame_1 / 127.5 - 1
-                frame_1 = torch.from_numpy(frame_1).unsqueeze(0).to(
-                    torch.device('cuda'))
+                frame_1 = torch.from_numpy(frame_1).unsqueeze(0).to(self.device)
 
                 frame_embedding_1 = self.get_quantized_frame_embedding(frame_1)
 
@@ -917,8 +915,7 @@ class VideoTransformerModel(BaseModel):
                 frame_2 = np.array(frame_2).transpose(2, 0,
                                                       1).astype(np.float32)
                 frame_2 = frame_2 / 127.5 - 1
-                frame_2 = torch.from_numpy(frame_2).unsqueeze(0).to(
-                    torch.device('cuda'))
+                frame_2 = torch.from_numpy(frame_2).unsqueeze(0).to(self.device)
 
                 frame_embedding_2 = self.get_quantized_frame_embedding(frame_2)
 
@@ -927,8 +924,7 @@ class VideoTransformerModel(BaseModel):
                 frame_3 = np.array(frame_3).transpose(2, 0,
                                                       1).astype(np.float32)
                 frame_3 = frame_3 / 127.5 - 1
-                frame_3 = torch.from_numpy(frame_3).unsqueeze(0).to(
-                    torch.device('cuda'))
+                frame_3 = torch.from_numpy(frame_3).unsqueeze(0).to(self.device)
 
                 frame_embedding_3 = self.get_quantized_frame_embedding(frame_3)
 
@@ -937,8 +933,7 @@ class VideoTransformerModel(BaseModel):
                 frame_4 = np.array(frame_4).transpose(2, 0,
                                                       1).astype(np.float32)
                 frame_4 = frame_4 / 127.5 - 1
-                frame_4 = torch.from_numpy(frame_4).unsqueeze(0).to(
-                    torch.device('cuda'))
+                frame_4 = torch.from_numpy(frame_4).unsqueeze(0).to(self.device)
 
                 frame_embedding_4 = self.get_quantized_frame_embedding(frame_4)
 
@@ -947,8 +942,7 @@ class VideoTransformerModel(BaseModel):
                 frame_5 = np.array(frame_5).transpose(2, 0,
                                                       1).astype(np.float32)
                 frame_5 = frame_5 / 127.5 - 1
-                frame_5 = torch.from_numpy(frame_5).unsqueeze(0).to(
-                    torch.device('cuda'))
+                frame_5 = torch.from_numpy(frame_5).unsqueeze(0).to(self.device)
 
                 frame_embedding_5 = self.get_quantized_frame_embedding(frame_5)
 
@@ -1068,10 +1062,7 @@ class VideoTransformerModel(BaseModel):
                 img_cat, f'{save_path}/{frame_idx:03d}.png', nrow=1, padding=4)
 
     def load_network(self):
-        checkpoint = torch.load(
-            self.opt['pretrained_sampler'],
-            map_location=lambda storage, loc: storage.cuda(torch.cuda.
-                                                           current_device()))
+        checkpoint = torch.load(self.opt['pretrained_sampler'], map_location=self.device)
         # remove unnecessary 'module.'
         for k, v in deepcopy(checkpoint).items():
             if k.startswith('module.'):
